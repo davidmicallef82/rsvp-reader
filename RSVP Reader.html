@@ -1,0 +1,603 @@
+<!--
+  MIT License
+  Copyright (c) 2026 David Micallef / Tyrannosoft (https://tyrannosoft.com.au)
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&display=swap">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSVP Speed Reader</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --surface: #181b22;
+      --surface-border: #262b36;
+      --text-main: #f0f3f6;
+      --text-muted: #8b949e;
+      --accent: #ff4757;
+      --accent-glow: rgba(255, 71, 87, 0.25);
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container { width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 1.5rem; }
+    header { text-align: center; }
+    header h1 { font-size: 1.75rem; font-weight: 700; }
+    header p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
+
+    /* RSVP Stage */
+    .rsvp-viewport {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      height: 220px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      overflow: hidden;
+    }
+    .orp-guide-top, .orp-guide-bottom {
+      position: absolute;
+      left: 38%;
+      width: 2px;
+      height: 24px;
+      background-color: var(--accent);
+      transform: translateX(-50%);
+      opacity: 0.85;
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+    .orp-guide-top { top: 14px; }
+    .orp-guide-bottom { bottom: 14px; }
+
+    .word-container {
+      display: flex;
+      align-items: baseline;
+      font-family: "SF Mono", "Roboto Mono", monospace;
+      font-size: 3.25rem;
+      font-weight: 600;
+      width: 100%;
+    }
+    .word-prefix { width: 38%; text-align: right; white-space: pre; }
+    .word-orp { color: var(--accent); text-align: center; width: 1ch; flex-shrink: 0; text-shadow: 0 0 10px var(--accent-glow); }
+    .word-suffix { width: 62%; text-align: left; white-space: pre; }
+
+    /* Progress Track */
+    .progress-section { display: flex; flex-direction: column; gap: 0.4rem; }
+    .progress-bar-container {
+      width: 100%; height: 6px; background: var(--surface-border);
+      border-radius: 3px; cursor: pointer;
+    }
+    .progress-fill { height: 100%; background: var(--primary); border-radius: 3px; width: 0%; }
+    .stats-row {
+      display: flex; justify-content: space-between;
+      color: var(--text-muted); font-size: 0.825rem; font-variant-numeric: tabular-nums;
+    }
+
+    /* Controls */
+    .controls {
+      background: var(--surface); border: 1px solid var(--surface-border);
+      border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;
+    }
+    .btn-row { display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
+    button {
+      background: #232732; border: 1px solid var(--surface-border); color: var(--text-main);
+      padding: 0.6rem 1.25rem; border-radius: 8px; font-size: 0.95rem; cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    button:hover { background: #2e3442; }
+    button.primary-btn { background: var(--primary); border-color: var(--primary); font-weight: 600; padding: 0.7rem 1.75rem; }
+    button.primary-btn:hover { background: var(--primary-hover); }
+
+    .settings-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+      padding-top: 0.5rem; border-top: 1px solid var(--surface-border);
+    }
+    .setting-label { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .setting-label span.val { color: var(--text-main); font-weight: 600; }
+    input[type="range"] { width: 100%; accent-color: var(--primary); cursor: pointer; }
+
+    /* Input */
+    .input-section {
+      background: var(--surface); border: 1px solid var(--surface-border);
+      border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .input-header { display: flex; justify-content: space-between; align-items: center; }
+    textarea {
+      width: 100%; height: 130px; background: #111317; border: 1px solid var(--surface-border);
+      border-radius: 8px; padding: 0.75rem; color: var(--text-main); font-size: 0.9rem; line-height: 1.5; resize: vertical;
+    }
+    kbd { background: #232732; border: 1px solid var(--surface-border); border-radius: 4px; padding: 2px 5px; font-size: 0.75rem; }
+
+    /* URL fetcher */
+    .url-section {
+      background: var(--surface); border: 1px solid var(--surface-border);
+      border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .url-row { display: flex; gap: 0.5rem; }
+    .url-input {
+      flex: 1; background: #111317; border: 1px solid var(--surface-border);
+      border-radius: 8px; padding: 0.6rem 0.85rem; color: var(--text-main);
+      font-size: 0.9rem; outline: none;
+    }
+    .url-input:focus { border-color: var(--primary); }
+    .url-status { font-size: 0.8rem; color: var(--text-muted); min-height: 1.2em; }
+
+    footer {
+      margin-top: 1rem;
+      padding: 1.5rem 0;
+      border-top: 1px solid var(--surface-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+    footer a {
+      display: flex;
+      align-items: center;
+      opacity: 0.7;
+      transition: opacity 0.15s ease;
+      text-decoration: none;
+    }
+    footer a:hover { opacity: 1; }
+    footer img { height: 34px; width: auto; }
+
+    /* Fullscreen */
+    .fullscreen-btn {
+      position: absolute; top: 1rem; right: 1rem;
+      background: none; border: none; color: var(--text-muted);
+      font-size: 1rem; padding: 0.3rem; cursor: pointer; line-height: 1;
+      transition: color 0.15s ease;
+    }
+    .fullscreen-btn:hover { color: var(--text-main); background: none; }
+
+    :fullscreen body { padding: 0; }
+    :fullscreen header,
+    :fullscreen .input-section,
+    :fullscreen .progress-section,
+    :fullscreen footer { display: none; }
+    :fullscreen .container { max-width: 100%; gap: 0; }
+    :fullscreen .rsvp-viewport {
+      position: fixed;
+      inset: 0 0 80px 0;
+      height: auto;
+      border-radius: 0;
+      border: none;
+      background: var(--bg);
+    }
+    :fullscreen .word-container { font-size: var(--fs-zoom, 10vw); }
+    .fs-zoom-btns { display: none; }
+    :fullscreen .fs-zoom-btns { display: flex; gap: 0.5rem; align-items: center; }
+    .fs-zoom-label { font-size: 0.8rem; color: var(--text-muted); min-width: 3ch; text-align: center; }
+    :fullscreen .controls {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      border-radius: 0;
+      border: none;
+      border-top: 1px solid var(--surface-border);
+      padding: 1rem 2rem;
+    }
+    :fullscreen .settings-grid { display: none; }
+    .tyrannosoft-wordmark {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .tyrannosoft-wordmark img {
+      height: 28px;
+      width: auto;
+    }
+    .tyrannosoft-wordmark span {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.35rem;
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+    .tyrannosoft-wordmark .t-main { color: #008574; }
+    .tyrannosoft-wordmark .t-soft { color: #6dada2; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img src="rsvp.svg" alt="RSVP Speed Reader" style="height:280px; width:auto;">
+    </header>
+
+    <div class="rsvp-viewport">
+      <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle fullscreen (F)">⛶</button>
+      <div class="orp-guide-top"></div>
+      <div class="word-container">
+        <div class="word-prefix" id="prefix">Press </div>
+        <div class="word-orp" id="orp">P</div>
+        <div class="word-suffix" id="suffix">lay</div>
+      </div>
+      <div class="orp-guide-bottom"></div>
+    </div>
+
+    <div class="progress-section">
+      <div class="progress-bar-container" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="stats-row">
+        <span id="wordCounter">Word: 0 / 0</span>
+        <span id="timeRemaining">Estimated: 0s</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="btn-row">
+        <button id="stepBackBtn">⏪ -10w</button>
+        <button id="prevBtn">◀ Prev</button>
+        <button class="primary-btn" id="playBtn">▶ Play</button>
+        <button id="nextBtn">Next ▶</button>
+        <button id="stepFwdBtn">+10w ⏩</button>
+        <button id="resetBtn">↺ Reset</button>
+        <span class="fs-zoom-btns">
+          <button id="zoomOutBtn" title="Zoom out (-)">A−</button>
+          <span class="fs-zoom-label" id="zoomLabel">10</span>
+          <button id="zoomInBtn" title="Zoom in (+)">A+</button>
+        </span>
+      </div>
+
+      <div class="settings-grid">
+        <div>
+          <div class="setting-label"><span>Reading Speed</span><span class="val" id="wpmVal">350 WPM</span></div>
+          <input type="range" id="wpmSlider" min="150" max="900" step="25" value="350">
+        </div>
+        <div>
+          <div class="setting-label"><span>Punctuation Pauses</span><span class="val" id="pauseState">Enabled</span></div>
+          <label style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+            <input type="checkbox" id="smartPauseCheckbox" checked> Pause slightly on periods, commas & clauses
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="url-section">
+      <div class="input-header">
+        <h2 style="font-size: 1rem;">Fetch Article from URL</h2>
+      </div>
+      <div class="url-row">
+        <input class="url-input" id="urlInput" type="url" placeholder="https://example.com/article">
+        <button id="fetchBtn" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;">Fetch</button>
+      </div>
+      <div class="url-status" id="urlStatus"></div>
+    </div>
+
+    <div class="input-section">
+      <div class="input-header">
+        <h2 style="font-size: 1rem;">Source Text</h2>
+        <button id="loadBtn" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;">Update Text</button>
+      </div>
+      <textarea id="textInput">Rapid Serial Visual Presentation (RSVP) is a reading technique designed to eliminate saccadic eye movements. When reading traditionally, your eyes constantly jump from word to word, which consumes up to 80% of total reading time.
+
+By fixing the Optimal Recognition Point (ORP) at a single focal coordinate, RSVP lets your brain process vocabulary at rapid speeds—often between 350 and 700 words per minute—without moving your gaze.</textarea>
+      <div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">
+        Shortcuts: <kbd>Space</kbd> Play / Pause &nbsp;|&nbsp; <kbd>←</kbd> / <kbd>→</kbd> Step &nbsp;|&nbsp; <kbd>↑</kbd> / <kbd>↓</kbd> Speed &nbsp;|&nbsp; <kbd>R</kbd> Reset &nbsp;|&nbsp; <kbd>F</kbd> Fullscreen &nbsp;|&nbsp; <kbd>+</kbd> / <kbd>-</kbd> Zoom
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://tyrannosoft.com.au" target="_blank" rel="noopener">
+      <span class="tyrannosoft-wordmark">
+        <img src="tyrannosoft.svg" alt="">
+        <span><span class="t-main">tyranno</span><span class="t-soft">soft</span></span>
+      </span>
+    </a>
+    <a href="https://davemicallef.com" target="_blank" rel="noopener">
+      <img src="dm-logo.svg" alt="Dave Micallef">
+    </a>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mozilla/readability/Readability.js"></script>
+  <script>
+    const prefixEl = document.getElementById('prefix');
+    const orpEl = document.getElementById('orp');
+    const suffixEl = document.getElementById('suffix');
+    const playBtn = document.getElementById('playBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const stepBackBtn = document.getElementById('stepBackBtn');
+    const stepFwdBtn = document.getElementById('stepFwdBtn');
+    const wpmSlider = document.getElementById('wpmSlider');
+    const wpmVal = document.getElementById('wpmVal');
+    const smartPauseCheckbox = document.getElementById('smartPauseCheckbox');
+    const textInput = document.getElementById('textInput');
+    const loadBtn = document.getElementById('loadBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const wordCounter = document.getElementById('wordCounter');
+    const timeRemaining = document.getElementById('timeRemaining');
+
+    let words = [], currentIndex = 0, isPlaying = false, timerId = null, wpm = 350;
+
+    function getOrpIndex(word) {
+      const len = word.length;
+      if (len <= 1) return 0;
+      if (len <= 5) return 1;
+      if (len <= 9) return 2;
+      if (len <= 13) return 3;
+      return 4;
+    }
+
+    function parseText(raw) {
+      return (!raw || !raw.trim()) ? [] : raw.trim().split(/\s+/);
+    }
+
+    function loadWords() {
+      words = parseText(textInput.value);
+      currentIndex = 0;
+      updateDisplay();
+      updateProgress();
+    }
+
+    function calculateDelay(word) {
+      const baseDelay = (60 / wpm) * 1000;
+      if (!smartPauseCheckbox.checked || !word) return baseDelay;
+      if (/[.!?]$/.test(word)) return baseDelay * 2.2;
+      if (/[,;:\u2014-]$/.test(word)) return baseDelay * 1.5;
+      if (word.length > 10) return baseDelay * 1.2;
+      return baseDelay;
+    }
+
+    function displayWord(word) {
+      if (!word) {
+        prefixEl.textContent = ''; orpEl.textContent = ''; suffixEl.textContent = '';
+        return;
+      }
+      const idx = getOrpIndex(word);
+      prefixEl.textContent = word.slice(0, idx);
+      orpEl.textContent = word.charAt(idx);
+      suffixEl.textContent = word.slice(idx + 1);
+    }
+
+    function updateDisplay() {
+      if (words.length === 0) { displayWord('No text'); return; }
+      currentIndex = Math.max(0, Math.min(words.length - 1, currentIndex));
+      displayWord(words[currentIndex]);
+    }
+
+    function updateProgress() {
+      if (words.length === 0) {
+        progressFill.style.width = '0%';
+        wordCounter.textContent = 'Word: 0 / 0';
+        timeRemaining.textContent = 'Estimated: 0s';
+        return;
+      }
+      const pct = ((currentIndex + 1) / words.length) * 100;
+      progressFill.style.width = `${pct}%`;
+      wordCounter.textContent = `Word: ${currentIndex + 1} / ${words.length}`;
+      const rem = words.length - (currentIndex + 1);
+      const secs = Math.ceil((rem / wpm) * 60);
+      timeRemaining.textContent = secs >= 60 ? `Remaining: ${Math.floor(secs/60)}m ${secs%60}s` : `Remaining: ${secs}s`;
+    }
+
+    function tick() {
+      if (!isPlaying) return;
+      if (currentIndex >= words.length - 1) { pause(); return; }
+      currentIndex++;
+      updateDisplay();
+      updateProgress();
+      timerId = setTimeout(tick, calculateDelay(words[currentIndex]));
+    }
+
+    function play() {
+      if (words.length === 0) loadWords();
+      if (words.length === 0) return;
+      if (currentIndex >= words.length - 1) currentIndex = 0;
+      isPlaying = true;
+      playBtn.textContent = '⏸ Pause';
+      playBtn.style.background = '#e11d48';
+      timerId = setTimeout(tick, calculateDelay(words[currentIndex]));
+    }
+
+    function pause() {
+      isPlaying = false;
+      playBtn.textContent = '▶ Play';
+      playBtn.style.background = 'var(--primary)';
+      if (timerId) clearTimeout(timerId);
+    }
+
+    function togglePlay() { isPlaying ? pause() : play(); }
+
+    function step(delta) {
+      pause();
+      currentIndex = Math.max(0, Math.min(words.length - 1, currentIndex + delta));
+      updateDisplay();
+      updateProgress();
+    }
+
+    playBtn.addEventListener('click', togglePlay);
+    resetBtn.addEventListener('click', () => { pause(); currentIndex = 0; updateDisplay(); updateProgress(); });
+    prevBtn.addEventListener('click', () => step(-1));
+    nextBtn.addEventListener('click', () => step(1));
+    stepBackBtn.addEventListener('click', () => step(-10));
+    stepFwdBtn.addEventListener('click', () => step(10));
+    loadBtn.addEventListener('click', () => { pause(); loadWords(); });
+
+    wpmSlider.addEventListener('input', (e) => {
+      wpm = parseInt(e.target.value, 10);
+      wpmVal.textContent = `${wpm} WPM`;
+      updateProgress();
+    });
+
+    progressBar.addEventListener('click', (e) => {
+      if (words.length === 0) return;
+      const rect = progressBar.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      currentIndex = Math.floor(ratio * (words.length - 1));
+      updateDisplay();
+      updateProgress();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement === textInput) return;
+      if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+      else if (e.code === 'ArrowLeft') { e.preventDefault(); step(-1); }
+      else if (e.code === 'ArrowRight') { e.preventDefault(); step(1); }
+      else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        wpm = Math.min(1000, wpm + 25);
+        wpmSlider.value = wpm;
+        wpmVal.textContent = `${wpm} WPM`;
+        updateProgress();
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        wpm = Math.max(100, wpm - 25);
+        wpmSlider.value = wpm;
+        wpmVal.textContent = `${wpm} WPM`;
+        updateProgress();
+      } else if (e.key.toLowerCase() === 'r') {
+        pause(); currentIndex = 0; updateDisplay(); updateProgress();
+      } else if (e.key.toLowerCase() === 'f') {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      } else if (e.key === '+' || e.key === '=') {
+        if (document.fullscreenElement) { zoomVw = Math.min(30, zoomVw + 1); applyZoom(); }
+      } else if (e.key === '-') {
+        if (document.fullscreenElement) { zoomVw = Math.max(3, zoomVw - 1); applyZoom(); }
+      }
+    });
+
+    loadWords();
+
+    const urlInput = document.getElementById('urlInput');
+    const fetchBtn = document.getElementById('fetchBtn');
+    const urlStatus = document.getElementById('urlStatus');
+
+    fetchBtn.addEventListener('click', fetchArticle);
+    urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') fetchArticle(); });
+
+    const PROXIES = [
+      {
+        name: 'allorigins',
+        async fetch(url) {
+          const res = await fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, 20000);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          return data.contents;
+        }
+      },
+      {
+        name: 'codetabs',
+        async fetch(url) {
+          const res = await fetchWithTimeout(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, 20000);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.text();
+        }
+      },
+      {
+        name: 'htmldrops',
+        async fetch(url) {
+          const res = await fetchWithTimeout(`https://api.htmldrops.com/raw?url=${encodeURIComponent(url)}`, 20000);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.text();
+        }
+      },
+    ];
+
+    function fetchWithTimeout(url, ms) {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
+    }
+
+    async function fetchWithFallback(url, statusEl) {
+      const errors = [];
+      for (const proxy of PROXIES) {
+        try {
+          statusEl.textContent = `Trying ${proxy.name}…`;
+          const html = await proxy.fetch(url);
+          if (html && html.length > 100) return html;
+          errors.push(`${proxy.name}: empty response`);
+        } catch (e) {
+          errors.push(`${proxy.name}: ${e.message}`);
+        }
+      }
+      throw new Error(errors.join(' | '));
+    }
+
+    async function fetchArticle() {
+      const url = urlInput.value.trim();
+      if (!url) return;
+      urlStatus.style.color = 'var(--text-muted)';
+      urlStatus.textContent = 'Fetching…';
+      fetchBtn.disabled = true;
+      try {
+        const html = await fetchWithFallback(url, urlStatus);
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        doc.querySelector('base')?.remove();
+        const article = new Readability(doc).parse();
+        const text = article?.textContent?.trim();
+        if (!text) throw new Error('No readable article content found on this page');
+        const clean = text.replace(/\s+/g, ' ').trim();
+        textInput.value = clean;
+        pause();
+        loadWords();
+        urlStatus.style.color = '#4ade80';
+        urlStatus.textContent = `✓ Loaded "${article.title || url}" — ${words.length} words`;
+      } catch (err) {
+        urlStatus.style.color = 'var(--accent)';
+        urlStatus.textContent = `✗ ${err.message}`;
+      } finally {
+        fetchBtn.disabled = false;
+      }
+    }
+
+    let zoomVw = 10;
+    const zoomLabel = document.getElementById('zoomLabel');
+    function applyZoom() {
+      document.documentElement.style.setProperty('--fs-zoom', `${zoomVw}vw`);
+      zoomLabel.textContent = zoomVw;
+    }
+    document.getElementById('zoomInBtn').addEventListener('click', () => { zoomVw = Math.min(30, zoomVw + 1); applyZoom(); });
+    document.getElementById('zoomOutBtn').addEventListener('click', () => { zoomVw = Math.max(3, zoomVw - 1); applyZoom(); });
+
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    function updateFullscreenIcon() {
+      fullscreenBtn.textContent = document.fullscreenElement ? '✕' : '⛶';
+    }
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+    document.addEventListener('fullscreenchange', updateFullscreenIcon);
+  </script>
+</body>
+</html>
