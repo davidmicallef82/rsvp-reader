@@ -42,7 +42,7 @@ Works best with blog posts, Substack articles, and editorial content. Major corp
 ## Usage
 
 1. Clone or download the repo
-2. Open `RSVP Reader.html` in any modern browser
+2. Open `index.html` in any modern browser
 3. Paste your text into the **Source Text** box, or fetch an article by URL
 4. Hit **Play** or press `Space`
 
